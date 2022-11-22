@@ -26,9 +26,8 @@ args = vars(ap.parse_args())
 def handleFileReceived(event, sender, data):
     global date_fmt
     # Create a file in ~/Pictures/ to receive image data from the drone.
-    path = '%s/tello-%s.jpeg' % (
-        os.getenv('HOMEPATH'),                              #Changed from Home to Homepath
-        datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S'))
+    path = f"{os.getenv('HOMEPATH')}/tello-{datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')}.jpeg"
+
     with open(path, 'wb') as fd:
         fd.write(data)
     #print('Saved photo to ',path)
@@ -59,7 +58,7 @@ def main():
         while True:
             try:
                 for frame in container.decode(video=0):
-                    if 0 < frame_skip:
+                    if frame_skip > 0:
                         frame_skip = frame_skip - 1
                         continue
                     start_time = time.time()
@@ -74,7 +73,7 @@ def main():
 
                     face_dict = {}
 
-                    for i in range(0, detections.shape[2]):
+                    for i in range(detections.shape[2]):
                         # extract the confidence (i.e., probability) associated with the
                         # prediction
                         confidence = detections[0, 0, i, 2]
@@ -100,7 +99,7 @@ def main():
                         distTolerance = 0.05 * np.linalg.norm(np.array((0, 0))- np.array((w, h)))
 
                         box = face_dict[sorted(face_dict.keys())[0]]
-                        y = startY - 10 if startY - 10 > 10 else startY + 10
+                        y = startY - 10 if startY > 20 else startY + 10
                         cv2.rectangle(image, (startX, startY), (endX, endY),
                             (0, 0, 255), 2)
 
@@ -123,7 +122,7 @@ def main():
                                 drone.clockwise(0)
                                 clock = False
                                 #print('Clock 0')
-                        
+
                         if int((startY+endY)/2) < H/2-distTolerance :
                             drone.up(30)
                             #print('Up')
@@ -162,7 +161,7 @@ def main():
                                 forw = False
                                 #print('Forward 0')
                                 drone.forward(0)
-                            
+
 
                     except Exception as e:
                         #print(e)
@@ -174,14 +173,11 @@ def main():
                     cv2.imshow('Original', image)
 
                     #cv2.imshow('Canny', cv2.Canny(image, 100, 200))
-                    if frame.time_base < 1.0/60:
-                        time_base = 1.0/60
-                    else:
-                        time_base = frame.time_base
+                    time_base = 1.0/60 if frame.time_base < 1.0/60 else frame.time_base
                     frame_skip = int((time.time() - start_time)/time_base)
                     keycode = cv2.waitKey(1)
-                    
-                    if keycode == 32 :
+
+                    if keycode == 32:
                         if landed:
                             drone.takeoff()
                             landed = False
@@ -205,7 +201,7 @@ def main():
             except Exception as e:
                 print(e)
                 break
-                     
+
 
     except Exception as ex:
         exc_type, exc_value, exc_traceback = sys.exc_info()
